@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Character to Bitmap</title>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0d0d0d;
+            --surface: #161616;
+            --border: #2a2a2a;
+            --accent: #00e5a0;
+            --accent2: #00b37a;
+            --text: #e8e8e8;
+            --muted: #666;
+            --mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 32px;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: var(--accent);
+        }
+
+        header p {
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 28px;
+            width: 100%;
+            max-width: 720px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .format-row {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            margin-top: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .format-row label {
+            font-size: 0.85rem;
+            color: var(--text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 2.5rem;
+            text-align: center;
+            padding: 10px 16px;
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: 'Noto Serif SC', serif;
+            max-width: 100px;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        label {
+            font-size: 0.8rem;
+            color: var(--muted);
+            flex: 1;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 22px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .btn:hover {
+            background: var(--accent2);
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .preview-row {
+            display: flex;
+            gap: 28px;
+            margin-top: 28px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+
+        .preview-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .section-label {
+            font-size: 0.72rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        canvas {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            image-rendering: pixelated;
+        }
+
+        #matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(32, 4px);
+            grid-template-rows: repeat(32, 4px);
+            gap: 1.5px;
+        }
+
+        .cell {
+            width: 4px;
+            height: 4px;
+            border-radius: 1px;
+            transition: background 0.05s;
+        }
+
+        .cell.on {
+            background: var(--accent);
+        }
+
+        .cell.off {
+            background: #1e1e1e;
+        }
+
+        .code-section {
+            margin-top: 24px;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .copy-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+        }
+
+        .copy-btn:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .copy-btn.copied {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        pre {
+            background: #0a0a0a;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            color: #c8fae0;
+            white-space: pre;
+        }
+
+        .empty-hint {
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.85rem;
+            padding: 40px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Character to Bitmap</h1>
+        <p>Type a character and get a binary matrix representation</p>
+    </header>
+
+    <div class="card">
+        <div class="input-row">
+            <input type="text" id="char-input" maxlength="1" placeholder="A" autocomplete="off" spellcheck="false" />
+            <label>Enter one character<br><span style="font-size:0.75rem">Font: Noto Serif SC, 32px</span></label>
+            <button class="btn" onclick="process()">Generate</button>
+        </div>
+        <div class="format-row">
+            <label><input type="radio" name="fmt" value="c" checked onchange="setFormat()"> C</label>
+            <label><input type="radio" name="fmt" value="cpp" onchange="setFormat()"> C++</label>
+            <label><input type="radio" name="fmt" value="py" onchange="setFormat()"> Python</label>
+            <label><input type="radio" name="fmt" value="js" onchange="setFormat()"> JS</label>
+            <label><input type="radio" name="fmt" value="ascii" onchange="setFormat()"> ASCII</label>
+            <label><input type="radio" name="fmt" value="md" onchange="setFormat()"> Markdown</label>
+        </div>
+
+        <div id="output-area">
+            <div class="empty-hint">Enter a character above and click Generate ↑</div>
+        </div>
+    </div>
+
+    <!-- Hidden render canvas -->
+    <canvas id="render-canvas" width="32" height="32" style="display:none"></canvas>
+
+    <script>
+        const input = document.getElementById('char-input');
+
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') process();
+        });
+
+        input.addEventListener('input', () => {
+            // Keep only last character typed (for IME input)
+            const v = input.value;
+            if (v.length > 1) input.value = v[v.length - 1];
+        });
+
+        let currentCh = '';
+        let currentMatrix = [];
+
+        function setFormat() {
+            if (currentCh) renderOutput(currentCh, currentMatrix);
+        }
+
+        function process() {
+            const ch = input.value.trim();
+            if (!ch || ch.length === 0) return;
+
+            currentCh = ch;
+            currentMatrix = renderToMatrix(ch);
+            renderOutput(currentCh, currentMatrix);
+        }
+
+        function renderToMatrix(ch) {
+            const canvas = document.getElementById('render-canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+            ctx.clearRect(0, 0, 32, 32);
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, 32, 32);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '32px "Noto Serif SC", serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(ch, 16, 16);
+
+            const imageData = ctx.getImageData(0, 0, 32, 32);
+            const data = imageData.data;
+
+            let matrix = [];
+            for (let row = 0; row < 32; row++) {
+                const rowBits = [];
+                for (let col = 0; col < 32; col++) {
+                    const idx = (row * 32 + col) * 4;
+                    rowBits.push(data[idx] > 128 ? 1 : 0);
+                }
+                matrix.push(rowBits);
+            }
+            
+            return matrix;
+        }
+
+        // Zhang-Suen thinning algorithm to reduce matrix lines to 1-pixel thickness
+        function applyZhangSuenThinning(grid) {
+            let width = grid[0].length;
+            let height = grid.length;
+            let hasChanged = true;
+
+            const safeGet = (r, c) => (r >= 0 && r < height && c >= 0 && c < width) ? grid[r][c] : 0;
+
+            while (hasChanged) {
+                hasChanged = false;
+                let toClear = [];
+
+                // Step 1
+                for (let r = 0; r < height; r++) {
+                    for (let c = 0; c < width; c++) {
+                        if (grid[r][c] === 1) {
+                            let p2 = safeGet(r - 1, c);
+                            let p3 = safeGet(r - 1, c + 1);
+                            let p4 = safeGet(r, c + 1);
+                            let p5 = safeGet(r + 1, c + 1);
+                            let p6 = safeGet(r + 1, c);
+                            let p7 = safeGet(r + 1, c - 1);
+                            let p8 = safeGet(r, c - 1);
+                            let p9 = safeGet(r - 1, c - 1);
+
+                            let A = (p2 === 0 && p3 === 1) + (p3 === 0 && p4 === 1) +
+                                    (p4 === 0 && p5 === 1) + (p5 === 0 && p6 === 1) +
+                                    (p6 === 0 && p7 === 1) + (p7 === 0 && p8 === 1) +
+                                    (p8 === 0 && p9 === 1) + (p9 === 0 && p2 === 1);
+                            let B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+
+                            if (B >= 2 && B <= 6 && A === 1 && (p2 * p4 * p6 === 0) && (p4 * p6 * p8 === 0)) {
+                                toClear.push([r, c]);
+                                hasChanged = true;
+                            }
+                        }
+                    }
+                }
+                toClear.forEach(([r, c]) => grid[r][c] = 0);
+                toClear = [];
+
+                // Step 2
+                for (let r = 0; r < height; r++) {
+                    for (let c = 0; c < width; c++) {
+                        if (grid[r][c] === 1) {
+                            let p2 = safeGet(r - 1, c);
+                            let p3 = safeGet(r - 1, c + 1);
+                            let p4 = safeGet(r, c + 1);
+                            let p5 = safeGet(r + 1, c + 1);
+                            let p6 = safeGet(r + 1, c);
+                            let p7 = safeGet(r + 1, c - 1);
+                            let p8 = safeGet(r, c - 1);
+                            let p9 = safeGet(r - 1, c - 1);
+
+                            let A = (p2 === 0 && p3 === 1) + (p3 === 0 && p4 === 1) +
+                                    (p4 === 0 && p5 === 1) + (p5 === 0 && p6 === 1) +
+                                    (p6 === 0 && p7 === 1) + (p7 === 0 && p8 === 1) +
+                                    (p8 === 0 && p9 === 1) + (p9 === 0 && p2 === 1);
+                            let B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+
+                            if (B >= 2 && B <= 6 && A === 1 && (p2 * p4 * p8 === 0) && (p2 * p6 * p8 === 0)) {
+                                toClear.push([r, c]);
+                                hasChanged = true;
+                            }
+                        }
+                    }
+                }
+                toClear.forEach(([r, c]) => grid[r][c] = 0);
+            }
+            return grid;
+        }
+
+        function generateCode(ch, matrix) {
+            const format = document.querySelector('input[name="fmt"]:checked').value;
+            const codePoint = ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
+            const varName = `char_U${codePoint}`;
+
+            const hexRows32 = matrix.map(row => {
+                let hexStr = '';
+                for (let b = 0; b < 4; b++) {
+                    let byte = 0;
+                    for (let bit = 0; bit < 8; bit++) {
+                        byte = (byte << 1) | row[b * 8 + bit];
+                    }
+                    hexStr += byte.toString(16).padStart(2, '0');
+                }
+                const compressedHex = parseInt(hexStr, 16).toString(16).toUpperCase();
+                return `0x${compressedHex}`;
+            });
+
+            if (format === 'c' || format === 'cpp') {
+                const modifier = format === 'cpp' ? 'constexpr ' : 'static const ';
+                const chunks = [];
+                for(let i=0; i<hexRows32.length; i+=8) chunks.push('    ' + hexRows32.slice(i, i+8).join(', '));
+                return `/* ${ch} (U+${codePoint}) */\n${modifier}uint32_t ${varName}[32] = {\n${chunks.join(',\n')}\n};`;
+            } else if (format === 'py') {
+                const chunks = [];
+                for(let i=0; i<hexRows32.length; i+=8) chunks.push('    ' + hexRows32.slice(i, i+8).join(', '));
+                return `# ${ch}\n${varName} = [\n${chunks.join(',\n')}\n]`;
+            } else if (format === 'js') {
+                const chunks = [];
+                for(let i=0; i<hexRows32.length; i+=8) chunks.push('    ' + hexRows32.slice(i, i+8).join(', '));
+                return `// ${ch}\nconst ${varName} = [\n${chunks.join(',\n')}\n];`;
+            } else if (format === 'ascii') {
+                return matrix.map(row => row.join('')).join('\n');
+            } else if (format === 'md') {
+                return '```text\n' + matrix.map(row => row.join('')).join('\n') + '\n```';
+            }
+        }
+
+        function renderOutput(ch, matrix) {
+            const area = document.getElementById('output-area');
+
+            // Build matrix grid cells HTML
+            const cells = matrix.flat().map(b =>
+                `<div class="cell ${b ? 'on' : 'off'}"></div>`
+            ).join('');
+
+            const codeOutput = generateCode(ch, matrix);
+
+            area.innerHTML = `
+      <div class="preview-row">
+        <div class="preview-section">
+          <span class="section-label">Matrix Preview (32×32)</span>
+          <div id="matrix-grid">${cells}</div>
+        </div>
+        <div class="preview-section" style="align-items:flex-start; flex:1; min-width:240px;">
+          <span class="section-label">Raw Bit Grid</span>
+          <pre id="raw-grid" style="font-size:0.6rem; line-height:1.15;">${matrix.map(r => r.join('')).join('\n')}</pre>
+        </div>
+      </div>
+      <div class="code-section">
+        <div class="code-header">
+          <span class="section-label">Code Output</span>
+          <button class="copy-btn" onclick="copyCode()">Copy</button>
+        </div>
+        <pre id="code-output">${escapeHtml(codeOutput)}</pre>
+      </div>
+    `;
+        }
+
+        function copyCode() {
+            const pre = document.getElementById('code-output');
+            navigator.clipboard.writeText(pre.innerText).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+            });
+        }
+
+        function escapeHtml(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+    </script>
+
+</body>
+
+</html>
