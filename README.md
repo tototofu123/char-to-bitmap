@@ -1,36 +1,16 @@
-# Character to Bitmap Generator
+# char-to-bitmap
 
-A simple web tool to convert characters into 32x32 binary matrix arrays for C, C++, Python, Javascript, ASCII, and Markdown.
+Public repository maintained by @tototofu123.
 
-## Features
-- Enter any character (including Chinese characters) and generate a 32x32 pixel representation.
-- Exports highly compressed 32-bit hex arrays (e.g. `0x0F0F0F0F`) for C, C++, Python, and JS.
-- Generates raw 0/1 pixel mapping outputs for Markdown and ASCII.
-- All rendering is done locally within the browser.
+## Website
 
-## Usage
-Simply open `index.html` in your web browser. Type a character into the input field, choose your desired output language, and click "Generate".
+- GitHub Pages: https://tototofu123.github.io/char-to-bitmap/
 
-## Output Examples
+## Security
 
-### C / C++ 
-\`\`\`c
-/* A (U+0041) */
-static const uint32_t char_U0041[32] = {
-    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-    ...
-};
-\`\`\`
+- Secret scanning workflow: ".github/workflows/security-secrets-scan.yml"
+- Gitleaks config: ".gitleaks.toml"
 
-### Python
-\`\`\`python
-# A
-char_U0041 = [
-    0x0, ...
-]
-\`\`\`
+## Notes
 
-## Technologies
-- HTML5 Canvas for character rendering
-- Vanilla JavaScript for matrix processing and code generation
-- CSS3 for styling
+This repository is configured with GitHub Pages (HTTPS), baseline safety checks, and tracked ignore rules.
